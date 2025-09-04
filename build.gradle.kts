@@ -29,9 +29,9 @@ dependencies {
 
 	// Зависимость для выполнения JavaScript с помощью GraalVM Polyglot API
 		// API самого Polyglot (классы Context, Value и т.д.)
-	implementation("org.graalvm.polyglot:polyglot:23.1.2")
+	implementation("org.graalvm.polyglot:polyglot:24.0.1")
 	// Реализация языка JavaScript
-	implementation("org.graalvm.polyglot:js:23.1.2")
+	implementation("org.graalvm.polyglot:js:24.0.1")
 
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")

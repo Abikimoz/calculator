@@ -7,6 +7,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.Locale;
 
 /**
  * Реализация сервиса для создания потоков вычислений.
@@ -71,7 +72,7 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
                         // Форматируем строку согласно требованиям для упорядоченного вывода.
                         // <№ итерации>, <рез. функции 1>, <время 1>, <бф. функции 1>, <рез. функции 2>, <время 2>, <бф. функции 2>
                         // Подсчет буферизации пока не реализован, поэтому временно ставим 0.
-                        return String.format("%d,%.4f,%d,%d,%.4f,%d,%d",
+                        return String.format(Locale.US, "%d,%.4f,%d,%d,%.4f,%d,%d",
                                 iter, r1.result, r1.time, 0, r2.result, r2.time, 0);
                     });
         });
@@ -98,7 +99,7 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
                 .map(result -> {
                     long endTime = System.currentTimeMillis();
                     // <№ итерации>, <№ функции>, <результат>, <время>
-                    return String.format("%d,%d,%.4f,%d", iteration, functionId, result, endTime - startTime);
+                    return String.format(Locale.US, "%d,%d,%.4f,%d", iteration, functionId, result, endTime - startTime);
                 })
                 .onErrorResume(e -> {
                     // В случае ошибки в скрипте, форматируем строку ошибки согласно заданию.
