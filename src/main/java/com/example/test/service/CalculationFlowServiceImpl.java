@@ -2,6 +2,7 @@ package com.example.test.service;
 
 import com.example.test.model.CalculationConfig;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -14,6 +15,7 @@ import java.util.Locale;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CalculationFlowServiceImpl implements CalculationFlowService {
 
     private final CalculationConfig config;
@@ -104,7 +106,8 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
                 .onErrorResume(e -> {
                     // В случае ошибки в скрипте, форматируем строку ошибки согласно заданию.
                     // Пример: 3,1, error: ReferenceError: z is not defined
-                    String errorMessage = String.format("%d,%d,error: %s", iteration, functionId, e.getCause().getMessage());
+                    log.error("Error in function #{} on iteration {}: {}", functionId, iteration, e.getCause().getMessage());
+                    String errorMessage = String.format(Locale.US, "%d,%d,error: %s", iteration, functionId, e.getCause().getMessage());
                     return Mono.just(errorMessage);
                 });
     }
