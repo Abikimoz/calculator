@@ -28,6 +28,9 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-webflux")
 
 	// Зависимость для выполнения JavaScript с помощью GraalVM Polyglot API
+		// API самого Polyglot (классы Context, Value и т.д.)
+	implementation("org.graalvm.polyglot:polyglot:23.1.2")
+	// Реализация языка JavaScript
 	implementation("org.graalvm.polyglot:js:23.1.2")
 
 	compileOnly("org.projectlombok:lombok")
