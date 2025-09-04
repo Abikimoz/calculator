@@ -26,6 +26,10 @@ repositories {
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-webflux")
+
+	// Зависимость для выполнения JavaScript с помощью GraalVM Polyglot API
+	implementation("org.graalvm.polyglot:js:23.1.2")
+
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
