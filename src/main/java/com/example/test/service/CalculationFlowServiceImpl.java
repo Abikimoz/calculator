@@ -6,9 +6,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * Реализация сервиса для создания потоков вычислений.
@@ -47,12 +50,29 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
     // Это позволяет менять реализацию, не затрагивая код этого класса.
     private final CalculationService calculationService;
 
+    // Потокобезопасные множества для хранения номеров завершенных итераций.
+    private final Set<Long> completedF1Iterations = new ConcurrentSkipListSet<>();
+    private final Set<Long> completedF2Iterations = new ConcurrentSkipListSet<>();
+
     /**
-     * Внутренний класс для хранения результата вычисления и времени его выполнения.
-     * ООП: Инкапсуляция. Record - это современный способ создания неизменяемых
-     * классов-хранителей данных в Java.
+     * Внутренний класс для хранения детального результата вычисления.
+     * Содержит либо результат, либо ошибку, а также метаданные.
      */
-    private record TimedResult(float result, long time) {}
+    private record TimedResult(Float result, Long duration, Long endTime, Throwable error) {
+        // Фабричный метод для успешного результата
+        static TimedResult success(float result, long duration, long endTime) {
+            return new TimedResult(result, duration, endTime, null);
+        }
+
+        // Фабричный метод для результата с ошибкой
+        static TimedResult failure(long duration, long endTime, Throwable error) {
+            return new TimedResult(null, duration, endTime, error);
+        }
+
+        boolean isSuccess() {
+            return error == null;
+        }
+    }
 
     /**
      * Создает неупорядоченный поток, где результаты отправляются по мере готовности.
@@ -84,41 +104,75 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
      */
     @Override
     public Flux<String> createOrderedFlow(int count) {
+        // Очищаем множества перед каждым новым потоком вычислений для чистоты состояния.
+        completedF1Iterations.clear();
+        completedF2Iterations.clear();
+
         Flux<Long> iterations = Flux.interval(Duration.ofMillis(config.getInterval()))
                 .take(count)
                 .map(i -> i + 1);
 
-        // Для каждого тика мы запускаем оба вычисления и ждем их завершения с помощью Mono.zip.
-        return iterations.flatMap(iter -> {
-            Mono<TimedResult> result1Mono = timedCalculation(config.getFunction1(), iter.intValue());
-            Mono<TimedResult> result2Mono = timedCalculation(config.getFunction2(), iter.intValue());
+        return iterations
+                .parallel() // Принудительно распараллеливаем поток
+                .runOn(Schedulers.parallel()) // Указываем использовать общий пул потоков
+                .flatMap(iter -> {
+                    // При успешном завершении вычисления добавляем номер итерации в соответствующее множество.
+                    Mono<TimedResult> result1Mono = timedCalculation(config.getFunction1(), 1, iter.intValue())
+                            .doOnSuccess(r -> {
+                                if (r != null && r.isSuccess()) completedF1Iterations.add(iter);
+                            });
+                    Mono<TimedResult> result2Mono = timedCalculation(config.getFunction2(), 2, iter.intValue())
+                            .doOnSuccess(r -> {
+                                if (r != null && r.isSuccess()) completedF2Iterations.add(iter);
+                            });
 
-            // Mono.zip объединяет результаты двух Mono. Он ждет, пока оба не завершатся,
-            // а затем передает оба результата дальше в виде кортежа (tuple).
-            return Mono.zip(result1Mono, result2Mono)
-                    .map(tuple -> {
-                        TimedResult r1 = tuple.getT1();
-                        TimedResult r2 = tuple.getT2();
-                        // Форматируем строку согласно требованиям для упорядоченного вывода.
-                        // <№ итерации>, <рез. функции 1>, <время 1>, <бф. функции 1>, <рез. функции 2>, <время 2>, <бф. функции 2>
-                        // Подсчет буферизации пока не реализован, поэтому временно ставим 0.
-                        return String.format(Locale.US, "%d,%.4f,%d,%d,%.4f,%d,%d",
-                                iter, r1.result, r1.time, 0, r2.result, r2.time, 0);
-                    });
-        });
+                    return Mono.zip(result1Mono, result2Mono)
+                            .map(tuple -> {
+                                TimedResult r1 = tuple.getT1();
+                                TimedResult r2 = tuple.getT2();
+
+                                // Если одна из функций вернула ошибку, выводим короткое сообщение
+                                if (!r1.isSuccess()) {
+                                    Throwable error = r1.error().getCause() != null ? r1.error().getCause() : r1.error();
+                                    return String.format(Locale.US, "%d,error: %s in function 1", iter, error.getMessage());
+                                }
+                                if (!r2.isSuccess()) {
+                                    Throwable error = r2.error().getCause() != null ? r2.error().getCause() : r2.error();
+                                    return String.format(Locale.US, "%d,error: %s in function 2", iter, error.getMessage());
+                                }
+
+                                // Обе функции успешны, формируем полную строку
+                                long bufferCount1 = completedF1Iterations.stream().filter(i -> i > iter).count();
+                                long bufferCount2 = completedF2Iterations.stream().filter(i -> i > iter).count();
+
+                                return String.format(Locale.US, "%d,%.4f,%d,%d,%.4f,%d,%d",
+                                        iter, r1.result(), r1.duration(), bufferCount1, r2.result(), r2.duration(), bufferCount2);
+                            })
+                            .doOnNext(s -> {
+                                // После того как строка для текущей итерации сформирована,
+                                // удаляем ее номер из множеств, чтобы они не росли бесконечно.
+                                completedF1Iterations.remove(iter);
+                                completedF2Iterations.remove(iter);
+                            });
+                })
+                .sequential(); // Собираем результаты обратно в один последовательный поток
     }
 
     /**
-     * Выполняет вычисление и замеряет время выполнения.
+     * Выполняет вычисление и замеряет время, возвращая детальный результат.
+     * Перехватывает ошибки, чтобы не прерывать поток.
      */
-    private Mono<TimedResult> timedCalculation(String function, int argument) {
+    private Mono<TimedResult> timedCalculation(String function, int functionId, int argument) {
         long startTime = System.currentTimeMillis();
-        // Здесь происходит полиморфный вызов. Мы не знаем, какая конкретно реализация
-        // CalculationService будет вызвана - это решится во время выполнения.
         return calculationService.evaluate(function, argument)
                 .map(result -> {
                     long endTime = System.currentTimeMillis();
-                    return new TimedResult(result, endTime - startTime);
+                    return TimedResult.success(result, endTime - startTime, endTime);
+                })
+                .onErrorResume(e -> {
+                    long endTime = System.currentTimeMillis();
+                    log.error("Error in function #{} on iteration {}: {}", functionId, argument, e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
+                    return Mono.just(TimedResult.failure(endTime - startTime, endTime, e));
                 });
     }
 
