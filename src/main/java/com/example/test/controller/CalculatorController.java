@@ -18,6 +18,10 @@ import reactor.core.publisher.Flux;
 @RequiredArgsConstructor
 public class CalculatorController {
 
+    // SOLID (D): Принцип инверсии зависимостей.
+    // Модули верхнего уровня (контроллер) не должны зависеть от модулей нижнего уровня (реализация сервиса).
+    // Оба должны зависеть от абстракций. Здесь контроллер зависит от интерфейса CalculationFlowService.
+    //
     // ООП: Полиморфизм.
     // Контроллер зависит от абстракции (интерфейса) CalculationFlowService, а не от
     // конкретного класса CalculationFlowServiceImpl. Это позволяет в будущем легко
