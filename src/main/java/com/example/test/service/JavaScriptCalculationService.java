@@ -39,7 +39,7 @@ public class JavaScriptCalculationService implements CalculationService {
      * @return Mono, который вернет результат. В случае ошибки выполнения вернет ошибку.
      */
     @Override
-    public Mono<Float> evaluate(String functionString, int argument) {
+    public Mono<Double> evaluate(String functionString, int argument) {
         // Оборачиваем вызов в Mono.fromCallable для выполнения в реактивном стиле.
         return Mono.fromCallable(() -> {
             // Используем try-with-resources, чтобы гарантировать автоматическое закрытие контекста.
@@ -62,8 +62,8 @@ public class JavaScriptCalculationService implements CalculationService {
                     throw new IllegalStateException("Функция не вернула число.");
                 }
 
-                // Преобразуем результат в float и возвращаем его.
-                return result.asFloat();
+                // Преобразуем результат в double и возвращаем его.
+                return result.asDouble();
             } catch (Exception e) {
                 // Любое исключение во время выполнения скрипта перехватывается,
                 // оборачивается в RuntimeException и передается в конвейер ошибок Mono.

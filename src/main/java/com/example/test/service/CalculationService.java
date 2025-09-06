@@ -29,5 +29,5 @@ public interface CalculationService {
      * @param argument Целочисленный аргумент, который будет передан в функцию.
      * @return Mono, который вернет результат вычисления в виде float.
      */
-    Mono<Float> evaluate(String function, int argument);
+    Mono<Double> evaluate(String function, int argument);
 }

@@ -15,10 +15,10 @@ public class JavaScriptCalculationServiceTest {
         // 1. Arrange (Подготовка)
         String function = "function(x) { return x * 2; }";
         int argument = 10;
-        float expectedResult = 20.0f;
+        double expectedResult = 20.0;
 
         // 2. Act (Действие)
-        Mono<Float> resultMono = calculationService.evaluate(function, argument);
+        Mono<Double> resultMono = calculationService.evaluate(function, argument);
 
         // 3. Assert (Проверка)
         // StepVerifier - это специальный инструмент из reactor-test для тестирования
@@ -38,7 +38,7 @@ public class JavaScriptCalculationServiceTest {
         int argument = 5;
 
         // 2. Act (Действие)
-        Mono<Float> resultMono = calculationService.evaluate(invalidFunction, argument);
+        Mono<Double> resultMono = calculationService.evaluate(invalidFunction, argument);
 
         // 3. Assert (Проверка)
         StepVerifier.create(resultMono)
@@ -58,7 +58,7 @@ public class JavaScriptCalculationServiceTest {
         int argument = 5;
 
         // 2. Act (Действие)
-        Mono<Float> resultMono = calculationService.evaluate(nonNumberFunction, argument);
+        Mono<Double> resultMono = calculationService.evaluate(nonNumberFunction, argument);
 
         // 3. Assert (Проверка)
         StepVerifier.create(resultMono)
