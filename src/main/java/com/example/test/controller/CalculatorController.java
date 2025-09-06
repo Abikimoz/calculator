@@ -18,6 +18,10 @@ import reactor.core.publisher.Flux;
 @RequiredArgsConstructor
 public class CalculatorController {
 
+    // ООП: Полиморфизм.
+    // Контроллер зависит от абстракции (интерфейса) CalculationFlowService, а не от
+    // конкретного класса CalculationFlowServiceImpl. Это позволяет в будущем легко
+    // подменить реализацию логики создания потоков, не меняя код контроллера.
     private final CalculationFlowService flowService;
 
     /**
@@ -32,7 +36,8 @@ public class CalculatorController {
             @RequestParam("count") int count,
             @RequestParam(value = "ordered", defaultValue = "false") boolean ordered) {
 
-        // В зависимости от параметра 'ordered' вызываем соответствующий метод сервиса.
+        // Здесь происходит полиморфный вызов. Мы обращаемся к методам интерфейса,
+        // а какая конкретно реализация будет вызвана, определяется на этапе выполнения.
         if (ordered) {
             return flowService.createOrderedFlow(count);
         } else {

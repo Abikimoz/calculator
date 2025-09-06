@@ -12,17 +12,35 @@ import java.util.Locale;
 
 /**
  * Реализация сервиса для создания потоков вычислений.
+ *
+ * ООП: Принципы Инкапсуляции и Полиморфизма.
+ * 1. Инкапсуляция: Логика создания упорядоченных и неупорядоченных потоков скрыта
+ *    внутри этого класса. Внешний мир взаимодействует с ним только через методы,
+ *    определенные в интерфейсе CalculationFlowService.
+ * 2. Полиморфизм: Класс зависит от абстракции (CalculationService), а не от конкретной
+ *    реализации, что позволяет легко подменять способ вычисления (например, с JS на Python).
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class CalculationFlowServiceImpl implements CalculationFlowService {
 
+    // ООП: Инкапсуляция.
+    // Зависимости скрыты от внешнего мира с помощью модификатора private.
+    // Они устанавливаются один раз через конструктор (благодаря @RequiredArgsConstructor)
+    // и не могут быть изменены в дальнейшем (final).
     private final CalculationConfig config;
+
+    // ООП: Полиморфизм.
+    // Поле объявлено через интерфейс (абстракцию) CalculationService.
+    // Во время выполнения Spring внедрит сюда конкретную реализацию (JavaScriptCalculationService).
+    // Это позволяет менять реализацию, не затрагивая код этого класса.
     private final CalculationService calculationService;
 
     /**
      * Внутренний класс для хранения результата вычисления и времени его выполнения.
+     * ООП: Инкапсуляция. Record - это современный способ создания неизменяемых
+     * классов-хранителей данных в Java.
      */
     private record TimedResult(float result, long time) {}
 
@@ -85,6 +103,8 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
      */
     private Mono<TimedResult> timedCalculation(String function, int argument) {
         long startTime = System.currentTimeMillis();
+        // Здесь происходит полиморфный вызов. Мы не знаем, какая конкретно реализация
+        // CalculationService будет вызвана - это решится во время выполнения.
         return calculationService.evaluate(function, argument)
                 .map(result -> {
                     long endTime = System.currentTimeMillis();

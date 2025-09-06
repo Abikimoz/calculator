@@ -8,6 +8,15 @@ import reactor.core.publisher.Mono;
 /**
  * Реализация CalculationService для JavaScript.
  * Этот сервис использует GraalVM Polyglot API для выполнения функций на JavaScript.
+ *
+ * ООП: Принципы Наследования и Полиморфизма.
+ * 1. Наследование: Класс реализует (implements) интерфейс CalculationService,
+ *    наследуя его "контракт" или тип. Он обязан предоставить реализацию для всех
+ *    методов, определенных в интерфейсе (в данном случае, для метода evaluate).
+ * 2. Полиморфизм: Этот класс является одной из возможных реализаций абстракции
+ *    CalculationService. Другие классы (например, PythonCalculationService) могли бы
+ *    предложить другую реализацию. Код, который зависит от интерфейса, сможет работать
+ *    с любой из этих реализаций, не меняясь.
  */
 @Service
 public class JavaScriptCalculationService implements CalculationService {
