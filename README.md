@@ -27,7 +27,7 @@
 
 1.  **Клонируйте репозиторий:**
     ```bash
-    git clone <URL вашего репозитория>
+    git clone https://github.com/Abikimoz/calculator.git>
     cd calculator
     ```
 
@@ -40,8 +40,6 @@
         ```bash
         gradlew.bat bootRun
         ```
-
-    После запуска приложение будет доступно по адресу `http://localhost:8080`.
 
 ## Использование API
 
