@@ -14,9 +14,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * Реализация сервиса для создания потоков вычислений.
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -25,13 +22,9 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
     private final CalculationConfig config;
     private final CalculationService calculationService;
 
-    // Кэши для хранения готовых результатов, ожидающих вывода
     private final ConcurrentMap<Long, TimedResult> pendingResultsF1 = new ConcurrentHashMap<>();
     private final ConcurrentMap<Long, TimedResult> pendingResultsF2 = new ConcurrentHashMap<>();
 
-    /**
-     * Внутренний класс для хранения детального результата вычисления.
-     */
     private record TimedResult(Double result, Long duration, Long endTime, Throwable error) {
         static TimedResult success(double result, long duration, long endTime) {
             return new TimedResult(result, duration, endTime, null);
@@ -46,9 +39,6 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
         }
     }
 
-    /**
-     * Создает неупорядоченный поток, где результаты отправляются по мере готовности.
-     */
     @Override
     public Flux<String> createUnorderedFlow(int count) {
         Flux<Long> iterations = Flux.interval(Duration.ofMillis(config.getInterval()))
@@ -66,12 +56,8 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
         return Flux.merge(flow1, flow2);
     }
 
-    /**
-     * Создает упорядоченный поток, где результаты для каждой итерации синхронизируются.
-     */
     @Override
     public Flux<String> createOrderedFlow(int count) {
-        // Очищаем кэши перед каждым новым потоком вычислений
         pendingResultsF1.clear();
         pendingResultsF2.clear();
 
@@ -86,14 +72,12 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
                     Mono<TimedResult> result1Mono = timedCalculation(config.getFunction1(), 1, iter.intValue())
                             .doOnSuccess(r -> {
                                 if (r != null && r.isSuccess()) {
-                                    // Сохраняем готовый результат в кэш ожидающих
                                     pendingResultsF1.put(iter, r);
                                 }
                             });
                     Mono<TimedResult> result2Mono = timedCalculation(config.getFunction2(), 2, iter.intValue())
                             .doOnSuccess(r -> {
                                 if (r != null && r.isSuccess()) {
-                                    // Сохраняем готовый результат в кэш ожидающих
                                     pendingResultsF2.put(iter, r);
                                 }
                             });
@@ -103,7 +87,6 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
                                 TimedResult r1 = tuple.getT1();
                                 TimedResult r2 = tuple.getT2();
 
-                                // Обработка ошибок
                                 if (!r1.isSuccess()) {
                                     Throwable error = r1.error().getCause() != null ? r1.error().getCause() : r1.error();
                                     return String.format(Locale.US, "%d,error: %s in function 1", iter, error.getMessage());
@@ -113,19 +96,16 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
                                     return String.format(Locale.US, "%d,error: %s in function 2", iter, error.getMessage());
                                 }
 
-                                // Подсчет буферизованных результатов (ожидающих вывода)
-                                // Исключаем текущую итерацию из подсчета
                                 int bufferCount1 = pendingResultsF1.size() - (pendingResultsF1.containsKey(iter) ? 1 : 0);
                                 int bufferCount2 = pendingResultsF2.size() - (pendingResultsF2.containsKey(iter) ? 1 : 0);
 
                                 return String.format(Locale.US, "%d,%.4f,%d,%d,%.4f,%d,%d",
                                         iter, r1.result(), r1.duration(),
-                                        Math.max(0, bufferCount1), // Не допускаем отрицательные значения
+                                        Math.max(0, bufferCount1),
                                         r2.result(), r2.duration(),
                                         Math.max(0, bufferCount2));
                             })
                             .doOnNext(s -> {
-                                // Удаляем отправленные результаты из кэшей ожидания
                                 pendingResultsF1.remove(iter);
                                 pendingResultsF2.remove(iter);
                             });
@@ -133,9 +113,6 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
                 .sequential();
     }
 
-    /**
-     * Выполняет вычисление и замеряет время, возвращая детальный результат.
-     */
     private Mono<TimedResult> timedCalculation(String function, int functionId, int argument) {
         long startTime = System.currentTimeMillis();
         return calculationService.evaluate(function, argument)
@@ -151,9 +128,6 @@ public class CalculationFlowServiceImpl implements CalculationFlowService {
                 });
     }
 
-    /**
-     * Выполняет вычисление и форматирует результат для неупорядоченного потока.
-     */
     private Mono<String> calculateAndFormatUnordered(String function, int functionId, long iteration) {
         long startTime = System.currentTimeMillis();
         return calculationService.evaluate(function, (int) iteration)
